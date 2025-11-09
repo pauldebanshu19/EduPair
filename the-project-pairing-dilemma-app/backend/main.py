@@ -25,57 +25,19 @@ app.add_middleware(
 )
 
 # Load the model
-pipeline = joblib.load(model_path)
+model_data = joblib.load(model_path)
+# Extract the pipeline from the dictionary if it's a dict, otherwise use it directly
+if isinstance(model_data, dict):
+    pipeline = model_data.get('model', model_data)
+else:
+    pipeline = model_data
 
-# Define the input data model
+# Define the input data model - only the 4 required features
 class UserInput(BaseModel):
-    age: int
-    height_cm: float
-    weight_kg: float
-    cuisine_top1: str
-    spice_tolerance: int
-    dietary_pref: str
-    eating_out_per_week: int
-    food_budget_per_meal: int
-    sweet_tooth_level: int
-    tea_vs_coffee: str
-    movie_genre_top1: str
-    series_genre_top1: str
-    content_lang_top1: str
-    ott_top1: str
-    binge_freq_per_week: int
-    screen_time_hours_per_week: int
-    gaming_days_per_week: int
-    gaming_hours_per_week: int
-    game_genre_top1: str
-    gaming_platform_top1: str
-    esports_viewing: str
-    social_platform_top1: str
-    daily_social_media_minutes: int
-    primary_content_type: str
-    content_creation_freq: str
-    music_genre_top1: str
-    listening_hours_per_day: int
-    music_lang_top1: str
-    live_concerts_past_year: int
-    reads_books: str
-    book_genre_top1: str
-    books_read_past_year: int
-    fashion_spend_per_month: int
-    shopping_mode_pref: str
-    ethical_shopping_importance: int
-    travel_freq_per_year: int
-    travel_type_top1: str
-    budget_per_trip: int
-    travel_planning_pref: int
-    hobby_top1: str
-    club_top1: str
-    weekly_hobby_hours: int
     introversion_extraversion: int
     risk_taking: int
-    conscientiousness: int
-    open_to_new_experiences: int
-    teamwork_preference: int
+    club_top1: str
+    weekly_hobby_hours: int
 
 @app.get("/data-summary")
 def data_summary():
@@ -118,74 +80,38 @@ def data_summary():
 
 @app.post("/predict")
 def predict(data: UserInput):
-    # These are the columns for prediction
-    prediction_features = ["introversion_extraversion", "risk_taking", "club_top1", "weekly_hobby_hours"]
-
+    print(f"Received data: {data.dict()}")  # Debug log
+    
     # Create a dataframe for prediction from the input data
-    prediction_df = pd.DataFrame([data.dict()], columns=prediction_features)
+    prediction_df = pd.DataFrame([data.dict()])
 
     # Make a prediction
     prediction = pipeline.predict(prediction_df)[0]
     prediction_proba = pipeline.predict_proba(prediction_df)[0]
 
-    # Create a full dataframe to append to the csv
-    # This should match the structure of the original data.csv
-    full_data_columns = [
-        'timestamp', 'age', 'height_cm', 'weight_kg', 'cuisine_top1', 'cuisine_top2', 'cuisine_top3',
-        'spice_tolerance', 'dietary_pref', 'eating_out_per_week', 'food_budget_per_meal', 'sweet_tooth_level',
-        'tea_vs_coffee', 'movie_genre_top1', 'movie_genre_top2', 'movie_genre_top3', 'series_genre_top1',
-        'series_genre_top2', 'series_genre_top3', 'content_lang_top1', 'content_lang_top2', 'content_lang_top3',
-        'ott_top1', 'ott_top2', 'ott_top3', 'binge_freq_per_week', 'screen_time_hours_per_week',
-        'gaming_days_per_week', 'gaming_hours_per_week', 'game_genre_top1', 'game_genre_top2', 'game_genre_top3',
-        'gaming_platform_top1', 'gaming_platform_top2', 'gaming_platform_top3', 'esports_viewing',
-        'social_platform_top1', 'social_platform_top2', 'social_platform_top3', 'daily_social_media_minutes',
-        'primary_content_type', 'content_creation_freq', 'music_genre_top1', 'music_genre_top2', 'music_genre_top3',
-        'listening_hours_per_day', 'music_lang_top1', 'music_lang_top2', 'live_concerts_past_year',
-        'reads_books', 'book_genre_top1', 'book_genre_top2', 'book_genre_top3', 'books_read_past_year',
-        'fashion_spend_per_month', 'shopping_mode_pref', 'ethical_shopping_importance', 'travel_freq_per_year',
-        'travel_type_top1', 'travel_type_top2', 'travel_type_top3', 'budget_per_trip', 'travel_planning_pref',
-        'hobby_top1', 'hobby_top2', 'club_top1', 'club_top2', 'weekly_hobby_hours', 'introversion_extraversion',
-        'risk_taking', 'conscientiousness', 'open_to_new_experiences', 'teamwork_preference'
-    ]
-
-    # Create a dictionary for the new row, with NaNs for missing values
-    new_row_data = {col: np.nan for col in full_data_columns}
-    new_row_data.update(data.dict())
-    new_row_data['timestamp'] = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-
-    # For columns not in UserInput, set to a default or NaN
-    new_row_data['cuisine_top2'] = np.nan
-    new_row_data['cuisine_top3'] = np.nan
-    new_row_data['movie_genre_top2'] = np.nan
-    new_row_data['movie_genre_top3'] = np.nan
-    new_row_data['series_genre_top2'] = np.nan
-    new_row_data['series_genre_top3'] = np.nan
-    new_row_data['content_lang_top2'] = np.nan
-    new_row_data['content_lang_top3'] = np.nan
-    new_row_data['ott_top2'] = np.nan
-    new_row_data['ott_top3'] = np.nan
-    new_row_data['game_genre_top2'] = np.nan
-    new_row_data['game_genre_top3'] = np.nan
-    new_row_data['gaming_platform_top2'] = np.nan
-    new_row_data['gaming_platform_top3'] = np.nan
-    new_row_data['social_platform_top2'] = np.nan
-    new_row_data['social_platform_top3'] = np.nan
-    new_row_data['music_genre_top2'] = np.nan
-    new_row_data['music_genre_top3'] = np.nan
-    new_row_data['music_lang_top2'] = np.nan
-    new_row_data['book_genre_top2'] = np.nan
-    new_row_data['book_genre_top3'] = np.nan
-    new_row_data['travel_type_top2'] = np.nan
-    new_row_data['travel_type_top3'] = np.nan
-    new_row_data['hobby_top2'] = np.nan
-    new_row_data['club_top2'] = np.nan
-
-
-    # Convert to DataFrame
-    full_df = pd.DataFrame([new_row_data], columns=full_data_columns)
-
-    # Append the new data to the csv
-    full_df.to_csv(data_path, mode="a", header=False, index=False)
+    # Save the prediction to CSV
+    try:
+        # Read existing CSV to get all columns
+        existing_df = pd.read_csv(data_path)
+        
+        # Create a new row with all columns initialized to NaN
+        new_row = pd.DataFrame([{col: np.nan for col in existing_df.columns}])
+        
+        # Fill in the values we have
+        new_row['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        new_row['introversion_extraversion'] = data.introversion_extraversion
+        new_row['risk_taking'] = data.risk_taking
+        new_row['club_top1'] = data.club_top1
+        new_row['weekly_hobby_hours'] = data.weekly_hobby_hours
+        
+        # Add the predicted teamwork preference (convert back to 1-5 scale)
+        new_row['teamwork_preference'] = 5 if prediction == 1 else 1
+        
+        # Append to CSV
+        new_row.to_csv(data_path, mode='a', header=False, index=False)
+        print(f"Successfully saved data to CSV")  # Debug log
+    except Exception as e:
+        print(f"Error saving to CSV: {e}")
 
     # Return the prediction
     if prediction == 1:
@@ -196,7 +122,7 @@ def predict(data: UserInput):
     return {
         "prediction": preference,
         "prediction_probability": {
-            "Solo": prediction_proba[0],
-            "Team": prediction_proba[1]
+            "Solo": float(prediction_proba[0]),
+            "Team": float(prediction_proba[1])
         }
     }

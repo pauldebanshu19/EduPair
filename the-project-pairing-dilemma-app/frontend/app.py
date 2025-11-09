@@ -2,238 +2,571 @@ import streamlit as st
 import requests
 import pandas as pd
 import plotly.graph_objects as go
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
+import plotly.express as px
+import base64
+import os
 
-st.set_page_config(layout="wide")
+# Page config
+st.set_page_config(
+    page_title="Project Pairing Dilemma",
+    page_icon="🎯",
+    layout="wide"
+)
 
-st.title("Project Pairing Dilemma: Team vs. Solo")
-
-
-# Initialize session state for page navigation
+# Initialize session state
 if 'page' not in st.session_state:
     st.session_state.page = 'form'
+if 'prediction_made' not in st.session_state:
+    st.session_state.prediction_made = False
+
+# Load and encode background image
+def get_base64_image(image_path):
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode()
+
+# Get the background image
+bg_image_path = os.path.join(os.path.dirname(__file__), "gradient.png")
+bg_image_base64 = get_base64_image(bg_image_path)
+
+# Custom CSS with background image
+st.markdown(f"""
+    <style>
+    /* Main app background with image */
+    .stApp {{
+        background-image: url('data:image/png;base64,{bg_image_base64}');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+    }}
+    
+    .main {{
+        padding: 2rem;
+    }}
+    
+    /* Glass effect for main content */
+    .block-container {{
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 2rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }}
+    
+    /* Title styling */
+    h1 {{
+        color: #ffffff !important;
+        text-align: center;
+        margin-bottom: 0.5rem;
+        font-size: 3rem;
+        font-weight: 700;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }}
+    
+    h2, h3 {{
+        color: #ffffff !important;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    }}
+    
+    /* Labels and text */
+    label {{
+        color: #ffffff !important;
+        font-weight: 600;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    }}
+    
+    p, li, span {{
+        color: #ffffff !important;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    }}
+    
+    .subtitle {{
+        text-align: center;
+        color: #ffffff !important;
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+        text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+    }}
+    
+    /* Button styling */
+    .stButton>button {{
+        width: 100%;
+        background: rgba(0, 115, 230, 0.8);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: white;
+        padding: 0.75rem;
+        font-size: 1.1rem;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        margin-top: 1rem;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(0, 115, 230, 0.3);
+        transition: all 0.3s ease;
+    }}
+    
+    .stButton>button:hover {{
+        background: rgba(0, 91, 181, 0.9);
+        color: #ffeb3b;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 115, 230, 0.5);
+    }}
+    
+    /* Input fields with glass effect */
+    .stTextInput input, .stNumberInput input {{
+        background: rgba(255, 255, 255, 0.9) !important;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 2px solid rgba(255, 255, 255, 0.3) !important;
+        border-radius: 10px;
+        color: #000000 !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }}
+    
+    .stTextInput input:hover, .stNumberInput input:hover {{
+        border-color: rgba(0, 115, 230, 0.6) !important;
+        box-shadow: 0 6px 20px rgba(0, 115, 230, 0.2);
+        transform: translateY(-2px);
+    }}
+    
+    /* Selectbox styling */
+    .stSelectbox > div > div {{
+        background: rgba(255, 255, 255, 0.9) !important;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 2px solid rgba(255, 255, 255, 0.3) !important;
+        border-radius: 10px;
+        color: #000000 !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }}
+    
+    .stSelectbox:hover > div > div {{
+        border-color: rgba(0, 115, 230, 0.6) !important;
+        box-shadow: 0 6px 20px rgba(0, 115, 230, 0.2);
+        transform: translateY(-2px);
+    }}
+    
+    /* Selectbox dropdown */
+    .stSelectbox svg {{
+        fill: #000000 !important;
+    }}
+    
+    [data-baseweb="popover"] {{
+        background: rgba(255, 255, 255, 0.98) !important;
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border-radius: 10px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }}
+    
+    [data-baseweb="menu"] {{
+        background: rgba(255, 255, 255, 0.98) !important;
+    }}
+    
+    [role="option"] {{
+        color: #000000 !important;
+        background: rgba(255, 255, 255, 0.95) !important;
+        padding: 10px 15px !important;
+    }}
+    
+    [role="option"]:hover {{
+        background: rgba(0, 115, 230, 0.3) !important;
+    }}
+    
+    /* Slider styling */
+    .stSlider > div > div > div > div {{
+        background-color: rgba(0, 115, 230, 0.8) !important;
+    }}
+    
+    /* Form styling */
+    .stForm {{
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        padding: 2rem;
+        border-radius: 20px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }}
+    
+    /* Prediction card */
+    .prediction-card {{
+        padding: 2.5rem;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        text-align: center;
+        margin: 2rem 0;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }}
+    
+    /* Metric card */
+    .metric-card {{
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        padding: 2rem;
+        border-radius: 15px;
+        text-align: center;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }}
+    
+    /* Expander styling */
+    .streamlit-expanderHeader {{
+        background: rgba(255, 255, 255, 0.2) !important;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        border-radius: 10px;
+    }}
+    
+    .streamlit-expanderContent {{
+        background: rgba(255, 255, 255, 0.15) !important;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }}
+    
+    /* Metrics */
+    [data-testid="stMetricValue"] {{
+        color: #ffffff !important;
+        font-size: 2rem !important;
+        font-weight: 700;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }}
+    
+    [data-testid="stMetricLabel"] {{
+        color: #ffffff !important;
+        font-weight: 600;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    }}
+    
+    /* Dataframe */
+    .stDataFrame {{
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-radius: 10px;
+    }}
+    </style>
+""", unsafe_allow_html=True)
 
 def show_form():
-    st.write("Please fill out the form below to get a prediction.")
+    # Header
+    st.title("🎯 Project Pairing Dilemma")
+    st.markdown('<p class="subtitle">Predict whether a student prefers Solo or Team projects</p>', unsafe_allow_html=True)
+
+    # Info box
+    with st.expander("ℹ️ About This Tool"):
+        st.markdown("""
+        **Faculty often struggle to form balanced project teams.** This tool helps predict student preferences based on:
+        
+        - 📊 **Introversion/Extraversion**: Social energy preference (1=Introvert, 5=Extravert)
+        - 🎲 **Risk-Taking**: Willingness to take risks (1=Low, 5=High)
+        - 🎯 **Primary Club/Activity**: Main extracurricular involvement
+        - ⏰ **Weekly Hobby Hours**: Time spent on hobbies per week
+        
+        **Impact**: Helps faculty assign balanced teams and respect individual preferences.
+        """)
+
+    st.markdown("---")
+
+    # Main form
+    st.markdown("### 📝 Student Information")
 
     with st.form(key='prediction_form'):
-        st.header("Personal Information")
-        age = st.number_input("Age", 15, 100, 20)
-        height_cm = st.number_input("Height (cm)", 100.0, 250.0, 170.0)
-        weight_kg = st.number_input("Weight (kg)", 30.0, 200.0, 60.0)
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**Personality Traits**")
+            introversion_extraversion = st.slider(
+                "Introversion/Extraversion",
+                min_value=1,
+                max_value=5,
+                value=3,
+                help="1 = Introvert, 5 = Extravert"
+            )
+            
+            risk_taking = st.slider(
+                "Risk-Taking Level",
+                min_value=1,
+                max_value=5,
+                value=3,
+                help="1 = Low risk-taker, 5 = High risk-taker"
+            )
+        
+        with col2:
+            st.markdown("**Activities & Interests**")
+            club_options = [
+                "Coding Club",
+                "Sports Club",
+                "Music Club",
+                "Cultural Club",
+                "Drama Club",
+                "Entrepreneurship Cell",
+                "Literary Club",
+                "Robotics Club"
+            ]
+            club_top1 = st.selectbox(
+                "Primary Club/Activity",
+                options=club_options,
+                index=0,
+                help="Select your primary club or activity"
+            )
+            
+            weekly_hobby_hours = st.number_input(
+                "Weekly Hobby Hours",
+                min_value=0,
+                max_value=100,
+                value=10,
+                help="Hours spent on hobbies per week"
+            )
+        
+        submit_button = st.form_submit_button(label='🔮 Predict Preference')
 
-        st.header("Food Preferences")
-        cuisine_top1 = st.text_input("Favorite Cuisine", "Indian")
-        spice_tolerance = st.slider("Spice Tolerance", 1, 5, 3)
-        dietary_pref = st.selectbox("Dietary Preference", ["Non-Veg", "Veg", "Eggitarian", "Jain", "Vegan"])
-        eating_out_per_week = st.number_input("Eating Out Per Week", 0, 10, 2)
-        food_budget_per_meal = st.number_input("Food Budget Per Meal", 50, 10000, 200)
-        sweet_tooth_level = st.slider("Sweet Tooth Level", 1, 5, 3)
-        tea_vs_coffee = st.selectbox("Tea vs. Coffee", ["Both", "Tea", "Coffee", "Neither Tea nor coffee"])
-
-        st.header("Entertainment")
-        movie_genre_top1 = st.text_input("Favorite Movie Genre", "Action")
-        series_genre_top1 = st.text_input("Favorite Series Genre", "Crime")
-        content_lang_top1 = st.text_input("Primary Content Language", "English")
-        ott_top1 = st.text_input("Favorite OTT Platform", "Netflix")
-        binge_freq_per_week = st.number_input("Binge Frequency Per Week", 0, 7, 2)
-        screen_time_hours_per_week = st.number_input("Screen Time (hours per week)", 0, 100, 10)
-
-        st.header("Gaming")
-        gaming_days_per_week = st.number_input("Gaming Days Per Week", 0, 7, 1)
-        gaming_hours_per_week = st.number_input("Gaming Hours Per Week", 0, 50, 2)
-        game_genre_top1 = st.text_input("Favorite Game Genre", "Strategy")
-        gaming_platform_top1 = st.text_input("Primary Gaming Platform", "Mobile")
-        esports_viewing = st.selectbox("eSports Viewing", ["Sometimes", "Often", "Never"])
-
-        st.header("Social Media")
-        social_platform_top1 = st.text_input("Favorite Social Media Platform", "Instagram")
-        daily_social_media_minutes = st.number_input("Daily Social Media (minutes)", 0, 1000, 120)
-        primary_content_type = st.text_input("Primary Content Type Consumed", "Memes")
-        content_creation_freq = st.selectbox("Content Creation Frequency", ["No", "Occasional", "Regular"])
-
-        st.header("Music")
-        music_genre_top1 = st.text_input("Favorite Music Genre", "Bollywood")
-        listening_hours_per_day = st.number_input("Music Listening (hours per day)", 0, 24, 2)
-        music_lang_top1 = st.text_input("Primary Music Language", "Hindi")
-        live_concerts_past_year = st.number_input("Live Concerts in Past Year", 0, 20, 1)
-
-        st.header("Reading")
-        reads_books = st.selectbox("Do you read books?", ["Sometimes", "Regularly", "No"])
-        book_genre_top1 = st.text_input("Favorite Book Genre", "Fiction")
-        books_read_past_year = st.number_input("Books Read in Past Year", 0, 100, 5)
-
-        st.header("Lifestyle")
-        fashion_spend_per_month = st.number_input("Fashion Spend Per Month", 0, 10000, 500)
-        shopping_mode_pref = st.selectbox("Shopping Mode Preference", ["Mixed", "Mostly Offline", "Mostly Online"])
-        ethical_shopping_importance = st.slider("Importance of Ethical Shopping", 1, 5, 3)
-
-        st.header("Travel")
-        travel_freq_per_year = st.number_input("Travel Frequency Per Year", 0, 50, 2)
-        travel_type_top1 = st.text_input("Favorite Travel Type", "Road Trip")
-        budget_per_trip = st.number_input("Budget Per Trip", 1000, 100000, 10000)
-        travel_planning_pref = st.slider("Travel Planning Preference", 1, 5, 3)
-
-        st.header("Hobbies & Personality")
-        hobby_top1 = st.text_input("Primary Hobby", "Coding")
-        club_top1 = st.text_input("Primary Club/Activity", "Coding Club")
-        weekly_hobby_hours = st.number_input("Weekly Hobby Hours", 0, 100, 10)
-        introversion_extraversion = st.slider("Introversion/Extraversion (1=Introvert, 5=Extravert)", 1, 5, 3)
-        risk_taking = st.slider("Risk-Taking (1=Low, 5=High)", 1, 5, 3)
-        conscientiousness = st.slider("Conscientiousness", 1, 5, 3)
-        open_to_new_experiences = st.slider("Openness to New Experiences", 1, 5, 3)
-        teamwork_preference = st.slider("Teamwork Preference (1=Solo, 5=Team)", 1, 5, 3)
-
-        submit_button = st.form_submit_button(label='Predict Preference')
-
-    # Predict button logic
+    # Handle prediction
     if submit_button:
-        # Create the payload
-        payload = {
-            "age": age,
-            "height_cm": height_cm,
-            "weight_kg": weight_kg,
-            "cuisine_top1": cuisine_top1,
-            "spice_tolerance": spice_tolerance,
-            "dietary_pref": dietary_pref,
-            "eating_out_per_week": eating_out_per_week,
-            "food_budget_per_meal": food_budget_per_meal,
-            "sweet_tooth_level": sweet_tooth_level,
-            "tea_vs_coffee": tea_vs_coffee,
-            "movie_genre_top1": movie_genre_top1,
-            "series_genre_top1": series_genre_top1,
-            "content_lang_top1": content_lang_top1,
-            "ott_top1": ott_top1,
-            "binge_freq_per_week": binge_freq_per_week,
-            "screen_time_hours_per_week": screen_time_hours_per_week,
-            "gaming_days_per_week": gaming_days_per_week,
-            "gaming_hours_per_week": gaming_hours_per_week,
-            "game_genre_top1": game_genre_top1,
-            "gaming_platform_top1": gaming_platform_top1,
-            "esports_viewing": esports_viewing,
-            "social_platform_top1": social_platform_top1,
-            "daily_social_media_minutes": daily_social_media_minutes,
-            "primary_content_type": primary_content_type,
-            "content_creation_freq": content_creation_freq,
-            "music_genre_top1": music_genre_top1,
-            "listening_hours_per_day": listening_hours_per_day,
-            "music_lang_top1": music_lang_top1,
-            "live_concerts_past_year": live_concerts_past_year,
-            "reads_books": reads_books,
-            "book_genre_top1": book_genre_top1,
-            "books_read_past_year": books_read_past_year,
-            "fashion_spend_per_month": fashion_spend_per_month,
-            "shopping_mode_pref": shopping_mode_pref,
-            "ethical_shopping_importance": ethical_shopping_importance,
-            "travel_freq_per_year": travel_freq_per_year,
-            "travel_type_top1": travel_type_top1,
-            "budget_per_trip": budget_per_trip,
-            "travel_planning_pref": travel_planning_pref,
-            "hobby_top1": hobby_top1,
-            "club_top1": club_top1,
-            "weekly_hobby_hours": weekly_hobby_hours,
-            "introversion_extraversion": introversion_extraversion,
-            "risk_taking": risk_taking,
-            "conscientiousness": conscientiousness,
-            "open_to_new_experiences": open_to_new_experiences,
-            "teamwork_preference": teamwork_preference
-        }
-
-        # Send the request to the backend
-        try:
-            response = requests.post("http://127.0.0.1:8000/predict", json=payload)
-            response.raise_for_status()  # Raise an exception for bad status codes
-            result = response.json()
-
-            # Display the result
-            st.subheader("Prediction Result")
-            st.write(f"You are more likely to prefer working in a **{result['prediction']}**")
-
-            # Prediction probability gauge
-            st.subheader("Prediction Probability")
-            prob_team = result['prediction_probability']['Team']
-
-            fig = go.Figure(go.Indicator(
-                mode = "gauge+number",
-                value = prob_team,
-                domain = {'x': [0, 1], 'y': [0, 1]},
-                title = {'text': "Probability of Preferring Teamwork"},
-                gauge = {
-                    'axis': {'range': [0, 1]},
-                    'steps' : [
-                        {'range': [0, 0.5], 'color': "lightgray"},
-                        {'range': [0.5, 1], 'color': "gray"}
-                    ],
-                    'threshold' : {'line': {'color': "red", 'width': 4}, 'thickness': 0.75, 'value': prob_team}
-                }
-            ))
-            st.plotly_chart(fig)
+        with st.spinner('Analyzing student profile...'):
+            payload = {
+                "introversion_extraversion": introversion_extraversion,
+                "risk_taking": risk_taking,
+                "club_top1": club_top1,
+                "weekly_hobby_hours": weekly_hobby_hours
+            }
             
-            
-            st.success("Prediction completed successfully!")
-            st.session_state.page = 'dashboard'
-            if st.button("View Dashboard"):
+            try:
+                response = requests.post("http://127.0.0.1:8000/predict", json=payload)
+                response.raise_for_status()
+                result = response.json()
+                
+                # Display result
+                st.markdown("---")
+                st.markdown("### 🎉 Prediction Result")
+                
+                prediction = result['prediction']
+                prob_solo = result['prediction_probability']['Solo']
+                prob_team = result['prediction_probability']['Team']
+                
+                # Result card
+                if prediction == "Team":
+                    st.markdown(f"""
+                    <div class="prediction-card">
+                        <h2>👥 Team Player</h2>
+                        <p style="font-size: 1.2rem; margin-top: 1rem;">
+                            This student is predicted to prefer <strong>Team Projects</strong>
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""
+                    <div class="prediction-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <h2>🎯 Solo Worker</h2>
+                        <p style="font-size: 1.2rem; margin-top: 1rem;">
+                            This student is predicted to prefer <strong>Solo Projects</strong>
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Probability gauge
+                st.markdown("### 📊 Confidence Level")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Solo Preference", f"{prob_solo*100:.1f}%")
+                with col2:
+                    st.metric("Team Preference", f"{prob_team*100:.1f}%")
+                
+                # Gauge chart
+                fig = go.Figure(go.Indicator(
+                    mode="gauge+number+delta",
+                    value=prob_team * 100,
+                    domain={'x': [0, 1], 'y': [0, 1]},
+                    title={'text': "Team Preference Probability", 'font': {'size': 20}},
+                    delta={'reference': 50, 'increasing': {'color': "#667eea"}},
+                    gauge={
+                        'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
+                        'bar': {'color': "#667eea"},
+                        'bgcolor': "white",
+                        'borderwidth': 2,
+                        'bordercolor': "gray",
+                        'steps': [
+                            {'range': [0, 50], 'color': '#ffeaa7'},
+                            {'range': [50, 100], 'color': '#74b9ff'}
+                        ],
+                        'threshold': {
+                            'line': {'color': "red", 'width': 4},
+                            'thickness': 0.75,
+                            'value': 50
+                        }
+                    }
+                ))
+                
+                fig.update_layout(
+                    height=300,
+                    margin=dict(l=20, r=20, t=50, b=20),
+                    paper_bgcolor="white",
+                    font={'color': "#2c3e50", 'family': "Arial"}
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                st.success("✅ Prediction completed successfully!")
+                
+                # Mark that prediction has been made
+                st.session_state.prediction_made = True
+                
+            except requests.exceptions.RequestException as e:
+                st.error(f"❌ Error connecting to the backend: {e}")
+                st.info("Make sure the backend server is running on http://127.0.0.1:8000")
+
+    # Navigation buttons - only show if prediction has been made
+    if st.session_state.prediction_made:
+        st.markdown("---")
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            if st.button("📊 View Dashboard", use_container_width=True):
+                st.session_state.page = 'dashboard'
                 st.rerun()
-                
-                
-        except requests.exceptions.RequestException as e:
-          st.error(f"Error connecting to the backend: {e}")        
 
+    # Footer
+    st.markdown("""
+    <div style="text-align: center; color: #7f8c8d; padding: 1rem;">
+        <p>Built with ❤️ for better team formation | Powered by Debanshu </p>
+    </div>
+    """, unsafe_allow_html=True)
 
 def show_dashboard():
-    st.title("📊 Real-Time Project Preference Dashboard")
-    st.write("This dashboard visualizes the project preference data in real-time.")
-
+    st.title("📊 Project Preference Dashboard")
+    
+    # Back button
     if st.button("← Back to Prediction Form"):
         st.session_state.page = 'form'
         st.rerun()
-
+    
+    st.markdown("---")
+    
     try:
         # Fetch data from the backend
-        summary_response = requests.get("http://127.0.0.1:8000/data-summary")
-        summary_response.raise_for_status()
-        summary_data = summary_response.json()
-
-        # --- Visualizations ---
-        st.header("Data Visualizations")
-
-        # Overall Preference Distribution
-        st.subheader("Overall Preference Distribution")
-        pref_df = pd.DataFrame(summary_data['preference_distribution'].items(), columns=['Preference', 'Count'])
-        st.bar_chart(pref_df.set_index('Preference'))
-
-        # Feature Distributions
-        st.subheader("Feature Distributions")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            intro_df = pd.DataFrame(summary_data['introversion_distribution'].items(), columns=['Score', 'Count']).sort_values('Score')
-            fig, ax = plt.subplots()
-            sns.barplot(x='Score', y='Count', data=intro_df, ax=ax)
-            ax.set_title("Introversion/Extraversion Scores")
-            st.pyplot(fig)
-
-        with col2:
-            risk_df = pd.DataFrame(summary_data['risk_taking_distribution'].items(), columns=['Score', 'Count']).sort_values('Score')
-            fig, ax = plt.subplots()
-            sns.barplot(x='Score', y='Count', data=risk_df, ax=ax)
-            ax.set_title("Risk-Taking Scores")
-            st.pyplot(fig)
-
-        # Recent Submissions
-        st.subheader("Recent Submissions")
-        recent_df = pd.DataFrame(summary_data['recent_submissions'])
-        st.dataframe(recent_df)
-
-    except requests.exceptions.RequestException as e:
-        st.warning(f"Could not load data visualizations: {e}")
-    except KeyError:
-        st.error("Received invalid data from the backend. Please ensure the backend is running correctly.")
-
+        response = requests.get("http://127.0.0.1:8000/data-summary")
+        response.raise_for_status()
+        data = response.json()
         
+        # Key Metrics
+        st.markdown("### 📈 Key Metrics")
+        col1, col2, col3 = st.columns(3)
+        
+        pref_dist = data['preference_distribution']
+        total = sum(pref_dist.values())
+        team_count = pref_dist.get('Team', 0)
+        solo_count = pref_dist.get('Solo', 0)
+        
+        with col1:
+            st.markdown(f"""
+            <div class="metric-card">
+                <h3 style="color: #667eea;">👥 Team Preference</h3>
+                <h1 style="color: #2c3e50;">{team_count}</h1>
+                <p style="color: #7f8c8d;">{(team_count/total*100):.1f}% of students</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f"""
+            <div class="metric-card">
+                <h3 style="color: #f5576c;">🎯 Solo Preference</h3>
+                <h1 style="color: #2c3e50;">{solo_count}</h1>
+                <p style="color: #7f8c8d;">{(solo_count/total*100):.1f}% of students</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown(f"""
+            <div class="metric-card">
+                <h3 style="color: #4CAF50;">📊 Total Students</h3>
+                <h1 style="color: #2c3e50;">{total}</h1>
+                <p style="color: #7f8c8d;">Model Accuracy: {data['accuracy']*100:.1f}%</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # Visualizations
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### 🎯 Preference Distribution")
+            pref_df = pd.DataFrame(list(pref_dist.items()), columns=['Preference', 'Count'])
+            fig = px.pie(pref_df, values='Count', names='Preference', 
+                        color='Preference',
+                        color_discrete_map={'Team': '#667eea', 'Solo': '#f5576c'},
+                        hole=0.4)
+            fig.update_layout(height=350)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            st.markdown("### 📊 Introversion/Extraversion Distribution")
+            intro_data = data['introversion_distribution']
+            intro_df = pd.DataFrame(list(intro_data.items()), columns=['Score', 'Count'])
+            intro_df['Score'] = intro_df['Score'].astype(str)
+            fig = px.bar(intro_df, x='Score', y='Count', 
+                        color='Count',
+                        color_continuous_scale='Blues')
+            fig.update_layout(height=350, showlegend=False)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        st.markdown("---")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### 🎲 Risk-Taking Distribution")
+            risk_data = data['risk_taking_distribution']
+            risk_df = pd.DataFrame(list(risk_data.items()), columns=['Score', 'Count'])
+            risk_df['Score'] = risk_df['Score'].astype(str)
+            fig = px.bar(risk_df, x='Score', y='Count',
+                        color='Count',
+                        color_continuous_scale='Reds')
+            fig.update_layout(height=350, showlegend=False)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            st.markdown("### 🎯 Confusion Matrix")
+            cm = data['confusion_matrix']
+            cm_df = pd.DataFrame(cm, 
+                               columns=['Predicted Solo', 'Predicted Team'],
+                               index=['Actual Solo', 'Actual Team'])
+            fig = px.imshow(cm_df, 
+                          text_auto=True,
+                          color_continuous_scale='Purples',
+                          aspect='auto')
+            fig.update_layout(height=350)
+            st.plotly_chart(fig, use_container_width=True)
+        
+        st.markdown("---")
+        st.markdown("### 📋 Recent Submissions")
+        recent_df = pd.DataFrame(data['recent_submissions'])
+        if not recent_df.empty:
+            # Show only relevant columns
+            display_cols = ['introversion_extraversion', 'risk_taking', 'club_top1', 'weekly_hobby_hours', 'teamwork_preference']
+            display_cols = [col for col in display_cols if col in recent_df.columns]
+            st.dataframe(recent_df[display_cols].tail(10), use_container_width=True)
+        else:
+            st.info("No submissions yet")
+            
+    except requests.exceptions.RequestException as e:
+        st.error(f"❌ Error connecting to the backend: {e}")
+        st.info("Make sure the backend server is running on http://127.0.0.1:8000")
+    except Exception as e:
+        st.error(f"❌ Error loading dashboard: {e}")
 
 # Page router
 if st.session_state.page == 'form':
