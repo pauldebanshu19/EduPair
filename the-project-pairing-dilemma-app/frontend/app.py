@@ -251,16 +251,42 @@ st.markdown(f"""
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
         color: #ffffff !important;
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
         border-radius: 10px;
+        font-weight: 600;
     }}
     
     .streamlit-expanderContent {{
-        background: rgba(255, 255, 255, 0.15) !important;
+        background: rgba(255, 255, 255,0.2) !important;
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
         color: #ffffff !important;
         border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 1.5rem;
+        border-radius: 0 0 10px 10px;
+    }}
+    
+    .streamlit-expanderContent p {{
+        color: #ffffff !important;
+        text-shadow: none;
+        line-height: 1.8;
+    }}
+    
+    .streamlit-expanderContent ul {{
+        color: #ffffff !important;
+        margin-top: 1rem;
+    }}
+    
+    .streamlit-expanderContent li {{
+        color: #ffffff !important;
+        text-shadow: none;
+        margin-bottom: 0.75rem;
+        line-height: 1.6;
+    }}
+    
+    .streamlit-expanderContent strong {{
+        color: #ffffff !important;
+        font-weight: 700;
     }}
     
     /* Metrics */
@@ -297,13 +323,13 @@ def show_form():
         st.markdown("""
         **Faculty often struggle to form balanced project teams.** This tool helps predict student preferences based on:
         
-        - 📊 **Introversion/Extraversion**: Social energy preference (1=Introvert, 5=Extravert)
-        - 🎲 **Risk-Taking**: Willingness to take risks (1=Low, 5=High)
+        - 📊 **Introversion/Extraversion**: Social energy preference (1 = Introvert, 5 = Extravert)
+        - 🎲 **Risk-Taking**: Willingness to take risks (1 = Low, 5 = High)
         - 🎯 **Primary Club/Activity**: Main extracurricular involvement
         - ⏰ **Weekly Hobby Hours**: Time spent on hobbies per week
         
         **Impact**: Helps faculty assign balanced teams and respect individual preferences.
-        """)
+        """, unsafe_allow_html=True)
 
     st.markdown("---")
 
