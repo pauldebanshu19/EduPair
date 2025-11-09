@@ -1,10 +1,13 @@
 import streamlit as st
-import requests
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 import base64
 import os
+import joblib
+import numpy as np
+from datetime import datetime
+from sklearn.metrics import accuracy_score, confusion_matrix
 
 # Page config
 st.set_page_config(
@@ -18,6 +21,29 @@ if 'page' not in st.session_state:
     st.session_state.page = 'form'
 if 'prediction_made' not in st.session_state:
     st.session_state.prediction_made = False
+
+# Load model and data
+@st.cache_resource
+def load_model():
+    backend_dir = os.path.join(os.path.dirname(__file__), "..", "backend")
+    model_path = os.path.join(backend_dir, "model.pkl")
+    model_data = joblib.load(model_path)
+    if isinstance(model_data, dict):
+        return model_data.get('model', model_data)
+    return model_data
+
+@st.cache_data
+def load_data():
+    backend_dir = os.path.join(os.path.dirname(__file__), "..", "backend")
+    data_path = os.path.join(backend_dir, "newdata.csv")
+    return pd.read_csv(data_path), data_path
+
+try:
+    pipeline = load_model()
+    df, data_path = load_data()
+except Exception as e:
+    st.error(f"Error loading model or data: {e}")
+    st.stop()
 
 # Load and encode background image
 def get_base64_image(image_path):
@@ -337,25 +363,40 @@ def show_form():
     # Handle prediction
     if submit_button:
         with st.spinner('Analyzing student profile...'):
-            payload = {
-                "introversion_extraversion": introversion_extraversion,
-                "risk_taking": risk_taking,
-                "club_top1": club_top1,
-                "weekly_hobby_hours": weekly_hobby_hours
-            }
-            
             try:
-                response = requests.post("http://127.0.0.1:8000/predict", json=payload)
-                response.raise_for_status()
-                result = response.json()
+                # Create dataframe for prediction
+                prediction_df = pd.DataFrame([{
+                    "introversion_extraversion": introversion_extraversion,
+                    "risk_taking": risk_taking,
+                    "club_top1": club_top1,
+                    "weekly_hobby_hours": weekly_hobby_hours
+                }])
+                
+                # Make prediction
+                prediction_value = pipeline.predict(prediction_df)[0]
+                prediction_proba = pipeline.predict_proba(prediction_df)[0]
+                
+                prediction = "Team" if prediction_value == 1 else "Solo"
+                prob_solo = float(prediction_proba[0])
+                prob_team = float(prediction_proba[1])
+                
+                # Save prediction to CSV
+                try:
+                    existing_df = pd.read_csv(data_path)
+                    new_row = pd.DataFrame([{col: np.nan for col in existing_df.columns}])
+                    new_row['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    new_row['introversion_extraversion'] = introversion_extraversion
+                    new_row['risk_taking'] = risk_taking
+                    new_row['club_top1'] = club_top1
+                    new_row['weekly_hobby_hours'] = weekly_hobby_hours
+                    new_row['teamwork_preference'] = 5 if prediction_value == 1 else 1
+                    new_row.to_csv(data_path, mode='a', header=False, index=False)
+                except Exception as e:
+                    st.warning(f"Could not save prediction: {e}")
                 
                 # Display result
                 st.markdown("---")
                 st.markdown("### 🎉 Prediction Result")
-                
-                prediction = result['prediction']
-                prob_solo = result['prediction_probability']['Solo']
-                prob_team = result['prediction_probability']['Team']
                 
                 # Result card
                 if prediction == "Team":
@@ -425,9 +466,8 @@ def show_form():
                 # Mark that prediction has been made
                 st.session_state.prediction_made = True
                 
-            except requests.exceptions.RequestException as e:
-                st.error(f"❌ Error connecting to the backend: {e}")
-                st.info("Make sure the backend server is running on http://127.0.0.1:8000")
+            except Exception as e:
+                st.error(f"❌ Error making prediction: {e}")
 
     # Navigation buttons - only show if prediction has been made
     if st.session_state.prediction_made:
@@ -456,10 +496,37 @@ def show_dashboard():
     st.markdown("---")
     
     try:
-        # Fetch data from the backend
-        response = requests.get("http://127.0.0.1:8000/data-summary")
-        response.raise_for_status()
-        data = response.json()
+        # Load and process data
+        df_dash = pd.read_csv(data_path)
+        df_dash = df_dash.replace({np.nan: None})
+        df_dash['preference'] = df_dash['teamwork_preference'].apply(lambda x: 'Team' if x is not None and x >= 4 else 'Solo')
+        
+        # Calculate metrics
+        preference_distribution = df_dash['preference'].value_counts().to_dict()
+        introversion_distribution = df_dash['introversion_extraversion'].dropna().value_counts().to_dict()
+        risk_taking_distribution = df_dash['risk_taking'].dropna().value_counts().to_dict()
+        recent_submissions = df_dash.tail(5).to_dict(orient='records')
+        
+        # Calculate accuracy
+        eval_df = df_dash.dropna(subset=['teamwork_preference', "introversion_extraversion", "risk_taking", "weekly_hobby_hours", "club_top1"])
+        if not eval_df.empty:
+            X = eval_df[["introversion_extraversion", "risk_taking", "weekly_hobby_hours", "club_top1"]]
+            y_true = eval_df['teamwork_preference'].apply(lambda x: 1 if x >= 4 else 0)
+            y_pred = pipeline.predict(X)
+            accuracy = accuracy_score(y_true, y_pred)
+            cm = confusion_matrix(y_true, y_pred).tolist()
+        else:
+            accuracy = 0
+            cm = [[0,0],[0,0]]
+        
+        data = {
+            "preference_distribution": preference_distribution,
+            "introversion_distribution": introversion_distribution,
+            "risk_taking_distribution": risk_taking_distribution,
+            "recent_submissions": recent_submissions,
+            "accuracy": accuracy,
+            "confusion_matrix": cm
+        }
         
         # Key Metrics
         st.markdown("### 📈 Key Metrics")
@@ -562,9 +629,6 @@ def show_dashboard():
         else:
             st.info("No submissions yet")
             
-    except requests.exceptions.RequestException as e:
-        st.error(f"❌ Error connecting to the backend: {e}")
-        st.info("Make sure the backend server is running on http://127.0.0.1:8000")
     except Exception as e:
         st.error(f"❌ Error loading dashboard: {e}")
 
