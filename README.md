@@ -1,65 +1,214 @@
-# The Project Pairing Dilemma: Team vs Solo Preference Predictor
+# 🎯 EduPair: Project Pairing Dilemma
 
-Predict whether a student prefers working Solo (0) or in a Team (1) from a small survey. The notebook auto-detects messy CSV headers, cleans inputs, and compares multiple ML models with cross-validated hyperparameter search and threshold tuning.
+> **AI-powered student preference prediction for balanced team formation**
 
-## Project highlights
-- Robust column detection for noisy/messy CSV headers (whitespace/newlines/symbols).
-- Features: introversion_extraversion, risk_taking, club_top1, weekly_hobby_hours.
-- Target: teamwork_preference (Likert 1–5). Binarized as Solo (1–2) vs Team (4–5). Neutral (3) rows dropped.
-- Models compared: Logistic Regression, Random Forest, Linear SVM, KNN, HistGradientBoosting.
-- Speed-ups: cached preprocessing, randomized search, fewer CV folds, fast estimators.
-- Evaluation: accuracy, balanced accuracy, ROC-AUC, confusion matrices, ROC overlay, CV-based threshold tuning.
+EduPair helps faculty predict whether students prefer working **Solo** or in **Teams** based on personality traits and activities. Built with machine learning and a beautiful glassmorphism UI.
 
-## Repository structure
-- project.ipynb — main notebook with data cleaning, modeling, tuning, and evaluation
-- data.csv — input dataset (expected in repo root)
-- requirements.txt — Python dependencies
+![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-## Quick start
-Prereqs: Python 3.9+ and pip.
+## 🌟 Features
 
-1) Install dependencies
-   pip install -r requirements.txt
+- **🤖 ML-Powered Predictions**: Logistic Regression model trained on student personality data
+- **🎨 Modern Glassmorphism UI**: Beautiful frosted glass effects with gradient backgrounds
+- **📊 Real-time Dashboard**: Analytics and visualizations of student preferences
+- **⚡ Fast API Backend**: RESTful API built with FastAPI
+- **💾 Data Persistence**: Automatic saving of predictions for analysis
+- **📈 Model Metrics**: Confusion matrix, accuracy tracking, and distribution charts
 
-2) Launch the notebook
-   jupyter notebook project.ipynb
+## 🎯 Prediction Features
 
-3) Run all cells. A cache directory sklearn_cache/ will be created to speed up repeated runs.
+The model uses only **4 key features** for accurate predictions:
 
-Notes
-- The notebook will try to auto-locate required columns in data.csv by fuzzy/keyword matching; see the console prints for found mappings.
-- If a required column cannot be found, the run stops early and prints available columns.
+1. **📊 Introversion/Extraversion** (1-5 scale)
+   - 1 = Highly Introverted
+   - 5 = Highly Extraverted
 
-## Data expectations
-The notebook searches for columns that match these concepts (robust to messy headers):
-- introversion_extraversion
-- risk_taking
-- weekly_hobby_hours
-- club_top1
-- teamwork_preference
+2. **🎲 Risk-Taking Level** (1-5 scale)
+   - 1 = Low risk-taker
+   - 5 = High risk-taker
 
-Target binarization
-- Solo = 1–2, Team = 4–5; Neutral (3) dropped for a clean binary task.
+3. **🎯 Primary Club/Activity**
+   - Coding Club, Sports Club, Music Club, Cultural Club, Drama Club, Entrepreneurship Cell, Literary Club, Robotics Club
 
-## Reproduce results
-- Split: stratified train/test (25% test).
-- Tuning: RandomizedSearchCV with 3-fold CV, scoring=balanced_accuracy.
-- Best model is selected by test balanced accuracy; if probabilistic, a CV-based threshold sweep further tunes the decision threshold.
+4. **⏰ Weekly Hobby Hours**
+   - Time spent on hobbies per week
 
-Outputs
-- Printed metrics per model (Accuracy, Balanced Acc, ROC-AUC) and classification reports.
-- Confusion matrices and an ROC comparison plot.
-- Final summary line with best model and decision threshold (if applicable).
+## 🏗️ Project Structure
 
-## Custom prediction
-The notebook exposes a helper function:
-- predict_preference(introversion_extraversion, risk_taking, club_top1, weekly_hobby_hours) -> dict with prob_team, pred_label, pred_text
+```
+EduPair/
+├── the-project-pairing-dilemma-app/
+│   ├── backend/
+│   │   ├── main.py              # FastAPI backend server
+│   │   ├── model.pkl            # Trained ML model
+│   │   └── newdata.csv          # Prediction data storage
+│   ├── frontend/
+│   │   ├── app.py               # Streamlit UI
+│   │   └── gradient.png         # Background image
+│   └── train.py                 # Model training script
+├── model_notebook/
+│   └── project.ipynb            # Jupyter notebook for analysis
+├── data.csv                     # Original training dataset
+└── requirements.txt             # Python dependencies
+```
 
-## Troubleshooting
-- Column not found: check data.csv headers; adjust tokens in the notebook’s name_map if needed.
-- Class imbalance: balanced_accuracy and class_weight are used; you can also tweak threshold search ranges.
-- Slow runs: reduce n_iter in RandomizedSearchCV, lower n_estimators for forests, or disable some models.
+## 🚀 Quick Start
 
-## License
-No license specified. Add one if you plan to share or reuse.
+### Prerequisites
+- Python 3.9 or higher
+- pip package manager
 
+### Installation
+
+1. **Clone the repository**
+```bash
+git clone https://github.com/pauldebanshu19/EduPair.git
+cd EduPair
+```
+
+2. **Install dependencies**
+```bash
+pip install -r requirements.txt
+```
+
+3. **Train the model** (optional - pre-trained model included)
+```bash
+python the-project-pairing-dilemma-app/train.py
+```
+
+### Running the Application
+
+#### Start the Backend (Terminal 1)
+```bash
+cd the-project-pairing-dilemma-app/backend
+uvicorn main:app --reload
+```
+Backend will run on: `http://127.0.0.1:8000`
+
+#### Start the Frontend (Terminal 2)
+```bash
+cd the-project-pairing-dilemma-app/frontend
+streamlit run app.py
+```
+Frontend will open automatically in your browser at: `http://localhost:8501`
+
+## 📊 API Endpoints
+
+### `POST /predict`
+Predict student preference
+
+**Request Body:**
+```json
+{
+  "introversion_extraversion": 3,
+  "risk_taking": 4,
+  "club_top1": "Coding Club",
+  "weekly_hobby_hours": 10
+}
+```
+
+**Response:**
+```json
+{
+  "prediction": "Team",
+  "prediction_probability": {
+    "Solo": 0.23,
+    "Team": 0.77
+  }
+}
+```
+
+### `GET /data-summary`
+Get analytics and model performance metrics
+
+**Response:**
+```json
+{
+  "preference_distribution": {"Team": 61, "Solo": 108},
+  "introversion_distribution": {...},
+  "risk_taking_distribution": {...},
+  "accuracy": 0.38,
+  "confusion_matrix": [[...], [...]]
+}
+```
+
+## 🎨 UI Features
+
+- **Glassmorphism Design**: Modern frosted glass effects
+- **Gradient Background**: Beautiful red-to-black gradient
+- **Interactive Forms**: Smooth animations and hover effects
+- **Real-time Predictions**: Instant results with confidence scores
+- **Analytics Dashboard**: Visual insights with Plotly charts
+- **Responsive Layout**: Works on all screen sizes
+
+## 🧠 Model Details
+
+- **Algorithm**: Logistic Regression with preprocessing pipeline
+- **Features**: 4 key personality and activity indicators
+- **Target**: Binary classification (Solo vs Team)
+- **Preprocessing**: 
+  - Numeric features: Median imputation + StandardScaler
+  - Categorical features: Most frequent imputation + OneHotEncoder
+- **Training**: Stratified train/test split (75/25)
+
+## 📈 Model Performance
+
+The model achieves balanced predictions with:
+- Real-time accuracy tracking
+- Confusion matrix visualization
+- Distribution analysis of predictions
+- Feature importance insights
+
+## 🎓 Use Cases
+
+- **Faculty**: Form balanced project teams based on student preferences
+- **Students**: Understand their collaboration style
+- **Institutions**: Analyze student personality trends
+- **Researchers**: Study teamwork preferences in education
+
+## 🛠️ Technology Stack
+
+- **Backend**: FastAPI, scikit-learn, pandas, numpy
+- **Frontend**: Streamlit, Plotly, requests
+- **ML**: Logistic Regression, preprocessing pipelines
+- **Data**: CSV storage, real-time updates
+
+## 📝 Data Format
+
+The model expects CSV data with these columns:
+- `introversion_extraversion` (1-5)
+- `risk_taking` (1-5)
+- `club_top1` (string)
+- `weekly_hobby_hours` (integer)
+- `teamwork_preference` (1-5, for training only)
+
+**Target Binarization:**
+- Solo: teamwork_preference = 1-2
+- Team: teamwork_preference = 4-5
+- Neutral (3): Excluded from training
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 👨‍💻 Author
+
+**Debanshu Paul**
+- GitHub: [@pauldebanshu19](https://github.com/pauldebanshu19)
+
+## 🙏 Acknowledgments
+
+- Built for educational institutions to improve team formation
+- Inspired by the need for balanced project teams
+- Powered by machine learning and modern web technologies
+
+---
+
+**⭐ Star this repo if you find it helpful!**
